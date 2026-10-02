@@ -235,7 +235,7 @@ function PegawaiDashboard() {
   const terpakaiCuti = cuti
     .filter((c) => c.status === "disetujui")
     .reduce((s, c) => s + c.jumlah_hari, 0);
-  const sisaCuti = (profile?.jatah_cuti ?? 0) - terpakaiCuti;
+  const sisaCuti = (profile?.jatah_cuti ?? 12) - terpakaiCuti;
 
   const metrik = riwayat.reduce(
     (acc, r) => {

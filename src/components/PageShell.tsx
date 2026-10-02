@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LogOut } from "lucide-react";
-import kbfLogo from "@/assets/kbf-logo.png.asset.json";
+
 
 const roleLabel: Record<string, string> = {
   pegawai: "Pegawai",
@@ -36,7 +36,7 @@ export function PageShell({
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-white p-1">
               <img
-                src={kbfLogo.url}
+                src="/favicon.png"
                 alt="Logo KBF Indonesia"
                 className="size-full object-contain"
               />

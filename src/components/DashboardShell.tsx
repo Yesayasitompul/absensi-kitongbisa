@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import { LogOut, Menu } from "lucide-react";
-import kbfLogo from "@/assets/kbf-logo.png.asset.json";
+
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ function SidebarBody({
       <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-5">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-sm">
           <img
-            src={kbfLogo.url}
+            src="/favicon.png"
             alt="Logo KBF Indonesia"
             className="size-full object-contain"
           />

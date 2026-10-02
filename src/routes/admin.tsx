@@ -15,11 +15,13 @@ import {
   Clock,
   Trash2,
   AlertTriangle,
+  MapPin,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { createEmployee, deleteEmployee } from "@/lib/admin.functions";
 import { RoleGuard } from "@/components/RoleGuard";
 import { DashboardShell, type MenuItem } from "@/components/DashboardShell";
+import { MapPicker } from "@/components/MapPicker";
 import {
   fmtJam,
   fmtTanggal,
@@ -115,6 +117,13 @@ interface SanksiRow {
   deskripsi: string | null;
   tanggal: string;
 }
+interface Kantor {
+  id: string;
+  nama: string;
+  latitude: number;
+  longitude: number;
+  radius_meter: number;
+}
 
 function AdminDashboard() {
   const [pegawai, setPegawai] = useState<Profile[]>([]);
@@ -123,6 +132,7 @@ function AdminDashboard() {
   const [semuaAbs, setSemuaAbs] = useState<AbsRow[]>([]);
   const [cuti, setCuti] = useState<CutiRow[]>([]);
   const [sanksi, setSanksi] = useState<SanksiRow[]>([]);
+  const [kantorList, setKantorList] = useState<Kantor[]>([]);
   const [tab, setTab] = useState("statistik");
 
   const menu: MenuItem[] = [
@@ -131,6 +141,7 @@ function AdminDashboard() {
     { value: "cuti", label: "Hak Cuti", icon: Plane },
     { value: "keterlambatan", label: "Keterlambatan", icon: Clock },
     { value: "sanksi", label: "Sanksi", icon: Gavel },
+    { value: "lokasi", label: "Lokasi Kantor", icon: MapPin },
     { value: "laporan", label: "Laporan", icon: FileDown },
   ];
 
@@ -140,7 +151,7 @@ function AdminDashboard() {
   );
 
   const load = useCallback(async () => {
-    const [p, j, a, c, s] = await Promise.all([
+    const [p, j, a, c, s, k] = await Promise.all([
       supabase.from("profiles").select("*").order("nama"),
       supabase.from("jadwal").select("*").order("jam_masuk"),
       supabase
@@ -150,6 +161,7 @@ function AdminDashboard() {
         .limit(300),
       supabase.from("cuti").select("*").order("created_at", { ascending: false }),
       supabase.from("sanksi").select("*").order("tanggal", { ascending: false }),
+      supabase.from("kantor").select("*").order("created_at"),
     ]);
     const all = (a.data ?? []) as AbsRow[];
     setPegawai((p.data ?? []) as Profile[]);
@@ -158,6 +170,7 @@ function AdminDashboard() {
     setAbsHariIni(all.filter((r) => r.tanggal === todayStr()));
     setCuti((c.data ?? []) as CutiRow[]);
     setSanksi((s.data ?? []) as SanksiRow[]);
+    setKantorList((k.data ?? []) as Kantor[]);
   }, []);
 
   useEffect(() => {
@@ -333,6 +346,29 @@ function AdminDashboard() {
               </CardContent>
             </Card>
           ))}
+        </TabsContent>
+
+        <TabsContent value="lokasi" className="space-y-3">
+          <TambahKantor onDone={load} />
+          {kantorList.map((k) => (
+            <Card key={k.id} className="shadow-card">
+              <CardContent className="flex items-center justify-between gap-2 p-3.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{k.nama}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    Lat: {k.latitude}, Lng: {k.longitude} · Radius: {k.radius_meter}m
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <EditKantor kantor={k} onDone={load} />
+                  <HapusKantor kantor={k} onDone={load} />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {kantorList.length === 0 && (
+            <p className="py-6 text-center text-sm text-muted-foreground">Belum ada lokasi kantor.</p>
+          )}
         </TabsContent>
 
         <TabsContent value="laporan" className="space-y-3">
@@ -664,5 +700,211 @@ function TambahSanksi({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function TambahKantor({ onDone }: { onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [nama, setNama] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [radius, setRadius] = useState("150");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open && !latitude && !longitude) {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setLatitude(String(pos.coords.latitude));
+            setLongitude(String(pos.coords.longitude));
+          },
+          (err) => {
+            console.warn("Geolocation error", err);
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      }
+    }
+  }, [open, latitude, longitude]);
+
+  const submit = async () => {
+    if (!nama.trim() || !latitude || !longitude || !radius) return toast.error("Semua field harus diisi.");
+    setBusy(true);
+    const { error } = await supabase.from("kantor").insert({
+      nama: nama.trim(),
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      radius_meter: Number(radius),
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Lokasi kantor ditambahkan.");
+    setOpen(false);
+    setNama("");
+    setLatitude("");
+    setLongitude("");
+    setRadius("150");
+    onDone();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="w-full"><Plus className="size-4" /> Tambah Lokasi Kantor</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Tambah Lokasi Kantor</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Nama Kantor</Label>
+            <Input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Contoh: Kantor Pusat" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Latitude</Label>
+              <Input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Longitude</Label>
+              <Input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Radius (Meter)</Label>
+            <Input type="number" value={radius} onChange={(e) => setRadius(e.target.value)} />
+          </div>
+          <div className="pt-2">
+            <Label className="mb-2 block text-sm font-medium">Tentukan Titik Lokasi</Label>
+            <MapPicker 
+              latitude={Number(latitude) || -2.533300} 
+              longitude={Number(longitude) || 140.717400} 
+              radius={Number(radius) || 0} 
+              onChange={(lat, lng) => {
+                setLatitude(String(lat));
+                setLongitude(String(lng));
+              }} 
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={submit} disabled={busy}>
+            {busy && <Loader2 className="size-4 animate-spin" />} Simpan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditKantor({ kantor, onDone }: { kantor: Kantor; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [nama, setNama] = useState(kantor.nama);
+  const [latitude, setLatitude] = useState(String(kantor.latitude));
+  const [longitude, setLongitude] = useState(String(kantor.longitude));
+  const [radius, setRadius] = useState(String(kantor.radius_meter));
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    setBusy(true);
+    const { error } = await supabase
+      .from("kantor")
+      .update({
+        nama: nama.trim(),
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+        radius_meter: Number(radius),
+      })
+      .eq("id", kantor.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Lokasi kantor diperbarui.");
+    setOpen(false);
+    onDone();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">Edit</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Edit Lokasi Kantor</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Nama Kantor</Label>
+            <Input value={nama} onChange={(e) => setNama(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Latitude</Label>
+              <Input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Longitude</Label>
+              <Input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Radius (Meter)</Label>
+            <Input type="number" value={radius} onChange={(e) => setRadius(e.target.value)} />
+          </div>
+          <div className="pt-2">
+            <Label className="mb-2 block text-sm font-medium">Tentukan Titik Lokasi</Label>
+            <MapPicker 
+              latitude={Number(latitude) || -2.533300} 
+              longitude={Number(longitude) || 140.717400} 
+              radius={Number(radius) || 0} 
+              onChange={(lat, lng) => {
+                setLatitude(String(lat));
+                setLongitude(String(lng));
+              }} 
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={save} disabled={busy}>
+            {busy && <Loader2 className="size-4 animate-spin" />} Simpan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function HapusKantor({ kantor, onDone }: { kantor: Kantor; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+
+  const hapus = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("kantor").delete().eq("id", kantor.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Lokasi kantor dihapus.");
+    onDone();
+  };
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10">
+          <Trash2 className="size-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Hapus {kantor.nama}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Lokasi kantor ini akan dihapus secara permanen.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogAction onClick={hapus} disabled={busy}>
+            {busy && <Loader2 className="size-4 animate-spin" />} Hapus
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

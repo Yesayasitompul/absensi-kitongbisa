@@ -9,25 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PimpinanRouteImport } from './routes/pimpinan'
-import { Route as PegawaiRouteImport } from './routes/pegawai'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as PegawaiRouteImport } from './routes/pegawai'
+import { Route as PimpinanRouteImport } from './routes/pimpinan'
 
-const PimpinanRoute = PimpinanRouteImport.update({
-  id: '/pimpinan',
-  path: '/pimpinan',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PegawaiRoute = PegawaiRouteImport.update({
-  id: '/pegawai',
-  path: '/pegawai',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -35,9 +25,19 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PegawaiRoute = PegawaiRouteImport.update({
+  id: '/pegawai',
+  path: '/pegawai',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PimpinanRoute = PimpinanRouteImport.update({
+  id: '/pimpinan',
+  path: '/pimpinan',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -81,25 +81,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/pimpinan': {
-      id: '/pimpinan'
-      path: '/pimpinan'
-      fullPath: '/pimpinan'
-      preLoaderRoute: typeof PimpinanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pegawai': {
-      id: '/pegawai'
-      path: '/pegawai'
-      fullPath: '/pegawai'
-      preLoaderRoute: typeof PegawaiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -109,11 +95,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pegawai': {
+      id: '/pegawai'
+      path: '/pegawai'
+      fullPath: '/pegawai'
+      preLoaderRoute: typeof PegawaiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pimpinan': {
+      id: '/pimpinan'
+      path: '/pimpinan'
+      fullPath: '/pimpinan'
+      preLoaderRoute: typeof PimpinanRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

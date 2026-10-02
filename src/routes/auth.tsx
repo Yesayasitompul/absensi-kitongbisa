@@ -4,7 +4,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Loader2, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import kbfLogo from "@/assets/kbf-logo.png.asset.json";
+
 import { useAuth, roleHome, type AppRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,7 +114,7 @@ function AuthPage() {
       <div className="mb-6 flex flex-col items-center text-center text-primary-foreground">
         <div className="mb-3 flex size-20 items-center justify-center rounded-2xl bg-white p-2 shadow-card">
           <img
-            src={kbfLogo.url}
+            src="/favicon.png"
             alt="Logo KBF Indonesia"
             className="size-full object-contain"
           />
