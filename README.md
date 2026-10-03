@@ -70,6 +70,32 @@ bun run format     # Prettier
 Konfigurasi backend (URL & kunci publik Supabase) dibaca dari variabel lingkungan — lihat
 `.env.example`. Nilai-nilai tersebut diambil dari halaman pengaturan project Supabase Anda.
 
+## Deploy ke Vercel
+
+Build sudah diverifikasi: lokal memakai preset `cloudflare-module`, di Vercel
+(`VERCEL=1`) Nitro otomatis memakai preset `vercel` dan menghasilkan
+`.vercel/output`. Jangan hard-pin preset dan jangan isi Output Directory.
+
+Setting Vercel Dashboard yang benar:
+
+- Framework Preset: `Other`
+- Build Command: `npm run build`
+- Install Command: `npm install`
+- Output Directory: kosongkan (biarkan Nitro yang mengatur)
+- Node.js: 20.x atau 22.x
+
+Environment Variables (wajib, di Project > Settings > Environment Variables,
+centang Production + Preview, lalu Redeploy):
+
+- `VITE_SUPABASE_URL` (= URL project Supabase)
+- `VITE_SUPABASE_PUBLISHABLE_KEY` (= anon/public key)
+- `SUPABASE_URL` (isi sama dengan di atas, untuk SSR)
+- `SUPABASE_PUBLISHABLE_KEY` (isi sama dengan di atas, untuk SSR)
+
+Tanpa 4 variabel di atas, halaman `/` akan stuck di spinner (sekarang sudah
+diperbaiki menampilkan pesan "Konfigurasi belum lengkap", lihat
+`src/hooks/useAuth.tsx`).
+
 ## Catatan Penting
 
 - Berkas `.env` **tidak** ikut dikumpulkan ke repository. Buat sendiri dari `.env.example`.

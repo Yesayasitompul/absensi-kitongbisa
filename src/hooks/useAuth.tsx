@@ -26,6 +26,7 @@ interface AuthContextValue {
   profile: Profile | null;
   role: AppRole | null;
   loading: boolean;
+  error: string | null;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -37,49 +38,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async (userId: string) => {
-    const [{ data: prof }, { data: roleRow }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-      supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .order("role")
-        .limit(1)
-        .maybeSingle(),
-    ]);
-    setProfile((prof as Profile) ?? null);
-    setRole(((roleRow?.role as AppRole) ?? "pegawai") as AppRole);
+    try {
+      const [{ data: prof }, { data: roleRow }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+        supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .order("role")
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      setProfile((prof as Profile) ?? null);
+      setRole(((roleRow?.role as AppRole) ?? "pegawai") as AppRole);
+    } catch (e) {
+      // Profil gagal dimuat (mis. RLS / network) jangan bikin loading selamanya.
+      console.error("[Auth] loadProfile failed:", e);
+    }
   }, []);
 
   const refresh = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user) await loadProfile(data.session.user.id);
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) await loadProfile(data.session.user.id);
+    } catch (e) {
+      console.error("[Auth] refresh failed:", e);
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }, [loadProfile]);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setSession(sess);
-      if (sess?.user) {
-        setTimeout(() => loadProfile(sess.user.id), 0);
-      } else {
-        setProfile(null);
-        setRole(null);
-      }
-    });
+    let sub: { subscription: { unsubscribe: () => void } } | null = null;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      if (data.session?.user) await loadProfile(data.session.user.id);
+    try {
+      const { data } = supabase.auth.onAuthStateChange((_event, sess) => {
+        setSession(sess);
+        if (sess?.user) {
+          setTimeout(() => void loadProfile(sess.user.id), 0);
+        } else {
+          setProfile(null);
+          setRole(null);
+        }
+      });
+      sub = data;
+    } catch (e) {
+      // Env Supabase hilang / client gagal dibuat: tampilkan error jelas,
+      // jangan stuck di spinner.
+      console.error("[Auth] onAuthStateChange failed:", e);
+      setError(e instanceof Error ? e.message : String(e));
       setLoading(false);
-    });
+      return;
+    }
 
-    return () => sub.subscription.unsubscribe();
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        setSession(data.session);
+        if (data.session?.user) await loadProfile(data.session.user.id);
+      })
+      .catch((e: unknown) => {
+        console.error("[Auth] getSession failed:", e);
+        setError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+    return () => sub?.subscription.unsubscribe();
   }, [loadProfile]);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("[Auth] signOut failed:", e);
+    }
     setProfile(null);
     setRole(null);
   }, []);
@@ -92,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         role,
         loading,
+        error,
         refresh,
         signOut,
       }}
